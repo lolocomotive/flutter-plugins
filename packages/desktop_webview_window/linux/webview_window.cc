@@ -47,6 +47,20 @@ gboolean decide_policy_cb(WebKitWebView *web_view,
 }
 
 }
+struct ConfigureCallbackData
+{
+  int title_bar_height;
+  GtkWidget *webview;
+};
+void configure_callback(GtkWindow *window,
+                                       GdkEvent *event, gpointer data_ptr)
+{
+  int h = event->configure.height;
+  ConfigureCallbackData *data = static_cast<ConfigureCallbackData *>(data_ptr);
+  auto widget = GTK_WIDGET(data->webview);
+  auto h2 = data->title_bar_height;
+  gtk_widget_set_size_request(widget, -1, h - h2);
+}
 
 WebviewWindow::WebviewWindow(
     FlMethodChannel *method_channel,
@@ -106,7 +120,14 @@ WebviewWindow::WebviewWindow(
   g_signal_connect(G_OBJECT(webview_), "decide-policy",
                    G_CALLBACK(decide_policy_cb), this);
 
+  ConfigureCallbackData *data = new ConfigureCallbackData();
+  data->webview = webview_;
+  data->title_bar_height = title_bar_height;
+  g_signal_connect(G_OBJECT(window_), "configure-event",
+                   G_CALLBACK(configure_callback), data);
+
   auto settings = webkit_web_view_get_settings(WEBKIT_WEB_VIEW(webview_));
+  gtk_widget_set_size_request(GTK_WIDGET(webview_), -1, height - title_bar_height);
   webkit_settings_set_javascript_can_open_windows_automatically(settings, true);
   default_user_agent_ = webkit_settings_get_user_agent(settings);
   gtk_box_pack_start(box_, webview_, true, true, 0);
